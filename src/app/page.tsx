@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/Sidebar'
 import { MetricCard } from '@/components/MetricCard'
 import { formatCurrency, formatNumber, formatPercentage } from '@/lib/utils'
+import { useAgents, useWorkflows, useActivityLog } from '@/lib/hooks'
 import {
   DollarSign,
   Users,
@@ -29,30 +30,44 @@ const mockMetrics = {
   cplChange: -6.8,
 }
 
-const mockAgents = [
-  { id: '1', name: 'CRAW', role: 'Main Agent', status: 'active', model: 'Claude Opus 4.6', sessions: 12 },
-  { id: '2', name: 'RIKI', role: 'Sales Agent', status: 'active', model: 'GPT-5.2', sessions: 8 },
-  { id: '3', name: 'NOVA', role: 'Marketing Agent', status: 'idle', model: 'MiniMax M2.5', sessions: 5 },
-  { id: '4', name: 'ATLAS', role: 'Business Agent', status: 'active', model: 'Gemini 3.1', sessions: 6 },
-  { id: '5', name: 'SHERLOCK', role: 'Forensic Agent', status: 'active', model: 'Claude Sonnet 4.6', sessions: 3 },
-]
-
-const mockWorkflows = [
-  { id: '1', name: 'Weekly Performance Report', status: 'running', lastRun: '2 hours ago', success: 98 },
-  { id: '2', name: 'Lead Qualification Pipeline', status: 'running', lastRun: '15 min ago', success: 94 },
-  { id: '3', name: 'Facebook Ad Optimization', status: 'paused', lastRun: '1 day ago', success: 87 },
-  { id: '4', name: 'HubSpot Sync', status: 'running', lastRun: '5 min ago', success: 100 },
-]
-
-const mockRecentActivity = [
-  { time: '2 min ago', action: 'Generated weekly performance report', agent: 'CRAW' },
-  { time: '15 min ago', action: 'Synced 23 new leads from HubSpot', agent: 'ATLAS' },
-  { time: '32 min ago', action: 'Optimized Facebook ad budget allocation', agent: 'NOVA' },
-  { time: '1 hour ago', action: 'Qualified 12 new SQLs', agent: 'RIKI' },
-  { time: '2 hours ago', action: 'Analyzed competitor pricing strategy', agent: 'SHERLOCK' },
-]
+function timeAgo(date: string): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 
 export default function DashboardPage() {
+  const { agents } = useAgents()
+  const { workflows } = useWorkflows()
+  const { activities } = useActivityLog()
+
+  const displayAgents = agents.length > 0 ? agents : [
+    { id: '1', name: 'CRAW', role: 'Main Agent', status: 'active', model: 'Claude Opus 4.6', sessions: 12 },
+    { id: '2', name: 'RIKI', role: 'Sales Agent', status: 'active', model: 'GPT-5.2', sessions: 8 },
+    { id: '3', name: 'NOVA', role: 'Marketing Agent', status: 'idle', model: 'MiniMax M2.5', sessions: 5 },
+    { id: '4', name: 'ATLAS', role: 'Business Agent', status: 'active', model: 'Gemini 3.1', sessions: 6 },
+    { id: '5', name: 'SHERLOCK', role: 'Forensic Agent', status: 'active', model: 'Claude Sonnet 4.6', sessions: 3 },
+  ]
+
+  const displayWorkflows = workflows.length > 0 ? workflows : [
+    { id: '1', name: 'Weekly Performance Report', status: 'running', last_run: new Date(Date.now() - 7200000).toISOString(), success_rate: 98 },
+    { id: '2', name: 'Lead Qualification Pipeline', status: 'running', last_run: new Date(Date.now() - 900000).toISOString(), success_rate: 94 },
+    { id: '3', name: 'Facebook Ad Optimization', status: 'paused', last_run: new Date(Date.now() - 86400000).toISOString(), success_rate: 87 },
+    { id: '4', name: 'HubSpot Sync', status: 'running', last_run: new Date(Date.now() - 300000).toISOString(), success_rate: 100 },
+  ]
+
+  const displayActivities = activities.length > 0 ? activities : [
+    { time: '2 min ago', action: 'Generated weekly performance report', agent: 'CRAW', created_at: new Date().toISOString() },
+    { time: '15 min ago', action: 'Synced 23 new leads from HubSpot', agent: 'ATLAS', created_at: new Date().toISOString() },
+    { time: '32 min ago', action: 'Optimized Facebook ad budget allocation', agent: 'NOVA', created_at: new Date().toISOString() },
+    { time: '1 hour ago', action: 'Qualified 12 new SQLs', agent: 'RIKI', created_at: new Date().toISOString() },
+    { time: '2 hours ago', action: 'Analyzed competitor pricing strategy', agent: 'SHERLOCK', created_at: new Date().toISOString() },
+  ]
+
   return (
     <div className="flex flex-1">
       <Sidebar />
@@ -110,27 +125,29 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold">Active Agents</h3>
                 <Bot className="h-5 w-5 text-neutral-400" />
               </div>
+
               <div className="space-y-3">
-                {mockAgents.map((agent) => (
+                {displayAgents.map((agent) => (
                   <div
                     key={agent.id}
                     className="flex items-center justify-between rounded-lg border border-white/5 bg-black/50 p-4"
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`h-3 w-3 rounded-full ${
+                        className={\`h-3 w-3 rounded-full \${
                           agent.status === 'active'
                             ? 'bg-green-500'
                             : agent.status === 'idle'
                             ? 'bg-yellow-500'
                             : 'bg-neutral-500'
-                        }`}
+                        }\`}
                       />
                       <div>
                         <p className="font-medium">{agent.name}</p>
                         <p className="text-xs text-neutral-500">{agent.role}</p>
                       </div>
                     </div>
+
                     <div className="text-right">
                       <p className="text-sm font-medium">{agent.sessions} sessions</p>
                       <p className="text-xs text-neutral-500">{agent.model}</p>
@@ -146,32 +163,34 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold">Active Workflows</h3>
                 <Activity className="h-5 w-5 text-neutral-400" />
               </div>
+
               <div className="space-y-3">
-                {mockWorkflows.map((workflow) => (
+                {displayWorkflows.map((workflow) => (
                   <div
                     key={workflow.id}
                     className="flex items-center justify-between rounded-lg border border-white/5 bg-black/50 p-4"
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`h-3 w-3 rounded-full ${
+                        className={\`h-3 w-3 rounded-full \${
                           workflow.status === 'running'
                             ? 'bg-green-500'
                             : workflow.status === 'paused'
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
-                        }`}
+                        }\`}
                       />
                       <div>
                         <p className="font-medium">{workflow.name}</p>
                         <p className="text-xs text-neutral-500">
                           <Clock className="mr-1 inline h-3 w-3" />
-                          {workflow.lastRun}
+                          {workflow.last_run ? timeAgo(workflow.last_run) : 'Never'}
                         </p>
                       </div>
                     </div>
+
                     <div className="text-right">
-                      <p className="text-sm font-medium">{workflow.success}%</p>
+                      <p className="text-sm font-medium">{workflow.success_rate}%</p>
                       <p className="text-xs text-neutral-500">success rate</p>
                     </div>
                   </div>
@@ -186,16 +205,17 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold">Recent Activity</h3>
               <Zap className="h-5 w-5 text-neutral-400" />
             </div>
+
             <div className="space-y-2">
-              {mockRecentActivity.map((activity, i) => (
+              {displayActivities.map((activity, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-4 rounded-lg border border-white/5 bg-black/50 p-3"
                 >
-                  <span className="text-xs text-neutral-500">{activity.time}</span>
+                  <span className="text-xs text-neutral-500">{activity.time || timeAgo(activity.created_at)}</span>
                   <span className="text-sm">{activity.action}</span>
                   <span className="ml-auto rounded bg-white/10 px-2 py-1 text-xs">
-                    {activity.agent}
+                    {activity.agent || activity.agent_name}
                   </span>
                 </div>
               ))}
